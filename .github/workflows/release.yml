@@ -1,0 +1,62 @@
+name: Release
+
+# Déclenché à chaque push d'un tag commençant par "v" (ex: v0.7.0).
+# Construit l'app, signe l'installeur, crée la release GitHub avec
+# les artefacts + latest.json pour l'auto-updater.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install npm deps
+        run: npm ci
+
+      - name: Build + Release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'NexPort __VERSION__'
+          releaseBody: |
+            ## Installation
+
+            Téléchargez **`NexPort_*_x64-setup.exe`** ci-dessous et lancez-le.
+
+            - Setup auto-contenu (~195 Mo) : aucun téléchargement supplémentaire requis.
+            - Bilingue FR / EN (sélecteur au lancement).
+            - Aucun droit administrateur requis.
+
+            ## Mise à jour automatique
+
+            Les versions précédentes de NexPort détecteront cette release au prochain
+            lancement et proposeront la mise à jour en un clic.
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true

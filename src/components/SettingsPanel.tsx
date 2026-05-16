@@ -2,8 +2,12 @@ import { useEffect, useState } from "react";
 import { useSettings } from "../store/settings";
 import { REFRESH_OPTIONS } from "../store/filters";
 import { isTauri } from "../lib/api";
+import { confirmAction, showError } from "../lib/dialog";
 import type { Theme } from "../types";
 import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
+import { check } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
+import { getVersion } from "@tauri-apps/api/app";
 
 interface Props {
   onClose: () => void;
@@ -24,12 +28,54 @@ export function SettingsPanel({ onClose }: Props) {
 
   const [newPort, setNewPort] = useState("");
   const [autostartActive, setAutostartActive] = useState(false);
+  const [appVersion, setAppVersion] = useState<string>("");
+  const [updateChecking, setUpdateChecking] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<string | null>(null);
 
   useEffect(() => {
     if (isTauri) {
       isEnabled().then(setAutostartActive).catch(console.error);
+      getVersion().then(setAppVersion).catch(console.error);
+    } else {
+      setAppVersion("dev");
     }
   }, []);
+
+  const handleCheckUpdate = async () => {
+    setUpdateChecking(true);
+    setUpdateStatus(null);
+    try {
+      const update = await check();
+      if (!update) {
+        setUpdateStatus("✓ Vous êtes à jour.");
+        return;
+      }
+      const ok = await confirmAction(
+        `Version disponible : ${update.version}\n` +
+          (update.body ? `\nNotes : ${update.body}\n` : "") +
+          `\nTélécharger et installer maintenant ?`,
+        {
+          title: "Mise à jour disponible",
+          okLabel: "Installer",
+          cancelLabel: "Plus tard",
+        },
+      );
+      if (!ok) {
+        setUpdateStatus(`Version ${update.version} disponible — installation reportée.`);
+        return;
+      }
+      setUpdateStatus("Téléchargement…");
+      await update.downloadAndInstall();
+      setUpdateStatus("Installation terminée — redémarrage…");
+      await relaunch();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setUpdateStatus(`Erreur : ${msg}`);
+      void showError("Échec de la vérification", msg);
+    } finally {
+      setUpdateChecking(false);
+    }
+  };
 
   const handleToggleAutostart = async () => {
     try {
@@ -193,6 +239,27 @@ export function SettingsPanel({ onClose }: Props) {
             <p className="setting__hint">
               Lance automatiquement <code>NexPort</code> à l'ouverture de votre session.
             </p>
+          </section>
+
+          <section className="setting">
+            <span className="setting__label">Mises à jour</span>
+            <p className="setting__hint">
+              Version installée : <code>NexPort v{appVersion || "?"}</code>
+            </p>
+            <button
+              type="button"
+              className="btn btn--sm"
+              onClick={handleCheckUpdate}
+              disabled={!isTauri || updateChecking}
+              style={{ alignSelf: "flex-start" }}
+            >
+              {updateChecking ? "Vérification…" : "Vérifier les mises à jour"}
+            </button>
+            {updateStatus && (
+              <p className="setting__hint" style={{ marginTop: 8 }}>
+                {updateStatus}
+              </p>
+            )}
           </section>
         </div>
 
