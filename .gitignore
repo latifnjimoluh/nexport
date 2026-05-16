@@ -1,0 +1,37 @@
+# Node
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Rust / Tauri build artefacts (kept here — src-tauri has its own too)
+src-tauri/target
+
+# Tauri signing keys (NEVER commit private keys!)
+# Public keys (*.pub) are safe to commit.
+*.key
+nexport-signing.key
+.tauri/
+
+# Secrets / env
+.env
+.env.local
+
+# Misc
+.sixth/

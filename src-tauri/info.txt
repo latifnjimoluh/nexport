@@ -1,0 +1,13 @@
+INFORMATION IMPORTANTE / IMPORTANT INFORMATION
+
+[FR]
+Cette application (NexPort) est un outil de diagnostic système.
+L'installation est rapide, mais notez que l'utilisation de certaines fonctionnalités 
+(comme la vérification de réputation d'IP ou les mises à jour) peut consommer 
+des données internet. Si vous utilisez une connexion mobile, soyez vigilant.
+
+[EN]
+This application (NexPort) is a system diagnostic tool.
+Installation is fast, but please note that using some features 
+(like IP reputation checks or updates) may consume internet data. 
+If you are using a mobile connection, please be careful.
