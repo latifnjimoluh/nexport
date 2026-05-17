@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { RowSelectionState } from "@tanstack/react-table";
 import { HistoryView } from "./components/HistoryView";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { Toolbar } from "./components/Toolbar";
@@ -59,6 +60,7 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [view, setView] = useState<"ports" | "history">("ports");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   useEffect(() => {
     if (!toast) return;
@@ -201,6 +203,50 @@ export default function App() {
     });
   }, [rows, search, protocolFilter, favoritesOnly, favSet]);
 
+  const selectedRows = useMemo(
+    () => filtered.filter((r) => rowSelection[r.id]),
+    [filtered, rowSelection],
+  );
+
+  async function handleKillBatch() {
+    if (selectedRows.length === 0) return;
+    const cliPreview = selectedRows
+      .slice(0, 3)
+      .map((r) => killCliCommand(r.pid ?? 0))
+      .join("\n");
+    const more = selectedRows.length > 3 ? `\n… (+${selectedRows.length - 3})` : "";
+    const ok = await confirmAction(
+      `Tuer ${selectedRows.length} processus selectionne(s) ?\n\n` +
+        `Equivalent CLI :\n${cliPreview}${more}`,
+      {
+        title: "Kill en serie",
+        destructive: true,
+        okLabel: `Tuer (${selectedRows.length})`,
+        cancelLabel: "Annuler",
+      },
+    );
+    if (!ok) return;
+
+    let success = 0;
+    let failed = 0;
+    for (const r of selectedRows) {
+      if (r.pid === null) continue;
+      try {
+        await killProcess(r.pid);
+        success++;
+      } catch {
+        failed++;
+      }
+    }
+    setRowSelection({});
+    queryClient.invalidateQueries({ queryKey: ["ports"] });
+    setToast(
+      failed === 0
+        ? `✓ ${success} process tue(s)`
+        : `${success} ok, ${failed} echec(s) (admin requis ?)`,
+    );
+  }
+
   async function handleKill(row: PortRow) {
     if (row.pid === null) return;
     const cli = killCliCommand(row.pid);
@@ -309,11 +355,35 @@ export default function App() {
             </div>
           )}
 
+          {selectedRows.length > 0 && (
+            <div className="bulk-bar" role="region" aria-label="Actions sur la selection">
+              <span className="bulk-bar__count">
+                {selectedRows.length} selectionne(s)
+              </span>
+              <button
+                type="button"
+                className="btn btn--danger btn--sm"
+                onClick={handleKillBatch}
+              >
+                Kill la selection
+              </button>
+              <button
+                type="button"
+                className="btn btn--ghost btn--sm"
+                onClick={() => setRowSelection({})}
+              >
+                Annuler
+              </button>
+            </div>
+          )}
+
           <main className="app__main">
             <PortTable
               rows={filtered}
               onKill={handleKill}
               onNotify={setToast}
+              rowSelection={rowSelection}
+              onRowSelectionChange={setRowSelection}
             />
           </main>
         </>

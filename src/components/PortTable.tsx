@@ -5,7 +5,9 @@ import {
   getCoreRowModel,
   getSortedRowModel,
   useReactTable,
+  type RowSelectionState,
   type SortingState,
+  type OnChangeFn,
 } from "@tanstack/react-table";
 import {
   copyToClipboard,
@@ -21,11 +23,19 @@ interface Props {
   rows: PortRow[];
   onKill: (row: PortRow) => void;
   onNotify?: (msg: string) => void;
+  rowSelection: RowSelectionState;
+  onRowSelectionChange: OnChangeFn<RowSelectionState>;
 }
 
 const columnHelper = createColumnHelper<PortRow>();
 
-export function PortTable({ rows, onKill, onNotify }: Props) {
+export function PortTable({
+  rows,
+  onKill,
+  onNotify,
+  rowSelection,
+  onRowSelectionChange,
+}: Props) {
   const favorites = useFavorites((s) => s.favorites);
   const toggleFavorite = useFavorites((s) => s.toggle);
   const favSet = useMemo(() => new Set(favorites), [favorites]);
@@ -78,6 +88,30 @@ export function PortTable({ rows, onKill, onNotify }: Props) {
 
   const columns = useMemo(
     () => [
+      columnHelper.display({
+        id: "select",
+        size: 32,
+        enableSorting: false,
+        header: ({ table }) => (
+          <input
+            type="checkbox"
+            className="row-checkbox"
+            checked={table.getIsAllRowsSelected()}
+            onChange={table.getToggleAllRowsSelectedHandler()}
+            aria-label="Tout selectionner"
+          />
+        ),
+        cell: ({ row }) => (
+          <input
+            type="checkbox"
+            className="row-checkbox"
+            checked={row.getIsSelected()}
+            disabled={!row.getCanSelect()}
+            onChange={row.getToggleSelectedHandler()}
+            aria-label={`Selectionner ${row.original.port}`}
+          />
+        ),
+      }),
       columnHelper.display({
         id: "fav",
         header: "",
@@ -279,10 +313,13 @@ export function PortTable({ rows, onKill, onNotify }: Props) {
   const table = useReactTable({
     data: sortedRows,
     columns,
-    state: { sorting, columnSizing },
+    state: { sorting, columnSizing, rowSelection },
     onSortingChange: setSorting,
     onColumnSizingChange: setColumnSizing,
+    onRowSelectionChange,
+    enableRowSelection: (row) => row.original.pid !== null,
     columnResizeMode: "onChange",
+    getRowId: (row) => row.id,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   });
