@@ -2,8 +2,8 @@ mod commands;
 mod db;
 mod elevation;
 mod firewall;
-mod models;
-mod ports;
+pub mod models;
+pub mod ports;
 mod settings;
 mod watcher;
 
