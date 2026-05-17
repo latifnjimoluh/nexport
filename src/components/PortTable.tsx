@@ -15,6 +15,7 @@ import {
   openInBrowser,
   openProcessFolder,
 } from "../lib/api";
+import { GeoBadge } from "./GeoBadge";
 import { useFavorites } from "../store/favorites";
 import { useTableState } from "../store/table";
 import type { PortRow } from "../types";
@@ -160,6 +161,7 @@ export function PortTable({
               {remote && (
                 <div className="remote-addr" title={`Connecté à ${remote}`}>
                   → {remote}
+                  <GeoBadge remoteAddr={remote} />
                 </div>
               )}
             </div>

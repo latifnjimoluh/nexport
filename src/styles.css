@@ -558,6 +558,18 @@ body {
   letter-spacing: 0.2px;
 }
 
+.geo-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: rgba(139, 149, 167, 0.12);
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
 /* States */
 .state {
   display: inline-block;
