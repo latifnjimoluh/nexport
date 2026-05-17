@@ -324,7 +324,7 @@ export default function App() {
       )}
 
       <footer className="app__footer">
-        v0.6.2 &middot;
+        v0.6.3 &middot;
         {lastUpdated
           ? ` dernier scan ${lastUpdated.toLocaleTimeString()}`
           : " en attente du premier scan…"}

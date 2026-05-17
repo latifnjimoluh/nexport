@@ -40,7 +40,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Pas de password — la cle a ete generee sans (option -p "").
+          # Definir cet env var avec une valeur non-vide ferait echouer la signature.
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'NexPort __VERSION__'
