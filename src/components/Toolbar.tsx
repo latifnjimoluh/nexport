@@ -39,7 +39,12 @@ export function Toolbar({
       <input
         className="toolbar__search"
         type="search"
-        placeholder="Rechercher port, PID, process…"
+        placeholder="Rechercher  ·  ex: port:>3000  name:node  state:LISTEN"
+        title={
+          "Operateurs : port:3000  port:>3000  port:3000-4000  pid:1234  " +
+          "name:node  path:nodejs  state:LISTEN  proto:TCP  fav:true\n" +
+          "Sans prefixe : recherche fuzzy sur port/pid/nom/chemin."
+        }
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
       />

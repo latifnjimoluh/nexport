@@ -17,6 +17,7 @@ import {
 import { confirmAction, showError } from "./lib/dialog";
 import { notify } from "./lib/notify";
 import { killCliCommand } from "./lib/platform";
+import { matchesQuery, parseQuery } from "./lib/search";
 import { useFavorites } from "./store/favorites";
 import { REFRESH_OPTIONS, useFilters } from "./store/filters";
 import { useSettings } from "./store/settings";
@@ -172,36 +173,17 @@ export default function App() {
 
   const rows = query.data ?? [];
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    
-    // Analyse de la recherche pour les plages de ports (ex: 3000-4000)
-    let range: [number, number] | null = null;
-    if (/^\d+-\d+$/.test(q)) {
-      const parts = q.split("-").map(Number);
-      range = [Math.min(...parts), Math.max(...parts)];
-    }
+  const parsedSearch = useMemo(() => parseQuery(search), [search]);
+  const isFavFn = useMemo(() => (port: number) => favSet.has(port), [favSet]);
 
+  const filtered = useMemo(() => {
     return rows.filter((r) => {
       if (favoritesOnly && !favSet.has(r.port)) return false;
       if (protocolFilter !== "ALL" && r.protocol !== protocolFilter)
         return false;
-      
-      if (!q) return true;
-
-      // Si une plage est détectée
-      if (range) {
-        return r.port >= range[0] && r.port <= range[1];
-      }
-
-      return (
-        String(r.port).includes(q) ||
-        String(r.pid ?? "").includes(q) ||
-        (r.processName?.toLowerCase().includes(q) ?? false) ||
-        (r.processPath?.toLowerCase().includes(q) ?? false)
-      );
+      return matchesQuery(r, parsedSearch, isFavFn);
     });
-  }, [rows, search, protocolFilter, favoritesOnly, favSet]);
+  }, [rows, parsedSearch, protocolFilter, favoritesOnly, favSet, isFavFn]);
 
   const selectedRows = useMemo(
     () => filtered.filter((r) => rowSelection[r.id]),
