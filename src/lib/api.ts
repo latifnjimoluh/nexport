@@ -27,6 +27,7 @@ const MOCK_ROWS: PortRow[] = [
     remoteAddr: null,
     requiresAdmin: false,
     risk: { level: "SAFE", reason: null },
+    framework: null,
     openedAt: Date.now() / 1000,
   },
   {
@@ -42,6 +43,7 @@ const MOCK_ROWS: PortRow[] = [
     remoteAddr: null,
     requiresAdmin: false,
     risk: { level: "SAFE", reason: null },
+    framework: null,
     openedAt: Date.now() / 1000,
   },
   {
@@ -57,6 +59,7 @@ const MOCK_ROWS: PortRow[] = [
     remoteAddr: "192.168.1.50:443",
     requiresAdmin: false,
     risk: { level: "SAFE", reason: null },
+    framework: null,
     openedAt: Date.now() / 1000,
   },
   {
@@ -72,6 +75,7 @@ const MOCK_ROWS: PortRow[] = [
     remoteAddr: null,
     requiresAdmin: true,
     risk: { level: "WARNING", reason: "Port HTTP standard" },
+    framework: null,
     openedAt: Date.now() / 1000,
   },
   {
@@ -87,6 +91,7 @@ const MOCK_ROWS: PortRow[] = [
     remoteAddr: null,
     requiresAdmin: true,
     risk: { level: "SAFE", reason: null },
+    framework: null,
     openedAt: Date.now() / 1000,
   },
   {
@@ -102,6 +107,7 @@ const MOCK_ROWS: PortRow[] = [
     remoteAddr: null,
     requiresAdmin: false,
     risk: { level: "SAFE", reason: null },
+    framework: null,
     openedAt: Date.now() / 1000,
   },
 ];

@@ -80,5 +80,6 @@ export interface PortRow {
   remoteAddr: string | null;
   requiresAdmin: boolean;
   risk: RiskInfo;
+  framework: string | null;
   openedAt: number;
 }

@@ -35,7 +35,9 @@ pub fn list_ports() -> Vec<PortRow> {
                     None
                 };
                 let risk = analyze_risk(info.local_port, name.as_deref());
-                
+                let framework = detect_framework(info.local_port, name.as_deref(), path.as_deref())
+                    .map(|s| s.to_string());
+
                 rows.push(PortRow {
                     id: format!("tcp-{}-{}", info.local_port, pid_key),
                     port: info.local_port,
@@ -53,6 +55,7 @@ pub fn list_ports() -> Vec<PortRow> {
                     process_cwd: cwd,
                     remote_addr,
                     risk,
+                    framework,
                     opened_at: 0,
                 });
             }
@@ -62,6 +65,8 @@ pub fn list_ports() -> Vec<PortRow> {
                 }
                 let (name, path, cwd) = resolve_process(&sys, pid);
                 let risk = analyze_risk(info.local_port, name.as_deref());
+                let framework = detect_framework(info.local_port, name.as_deref(), path.as_deref())
+                    .map(|s| s.to_string());
 
                 rows.push(PortRow {
                     id: format!("udp-{}-{}", info.local_port, pid_key),
@@ -80,6 +85,7 @@ pub fn list_ports() -> Vec<PortRow> {
                     process_cwd: cwd,
                     remote_addr: None,
                     risk,
+                    framework,
                     opened_at: 0,
                 });
             }
@@ -88,6 +94,81 @@ pub fn list_ports() -> Vec<PortRow> {
 
     rows.sort_by_key(|r| (r.port, !matches!(r.protocol, Protocol::Tcp)));
     rows
+}
+
+/// Devine le framework/service qui ecoute sur ce port, par mapping
+/// (chemin exe + nom de process + port). Heuristique, jamais 100% fiable.
+fn detect_framework(port: u16, name: Option<&str>, path: Option<&str>) -> Option<&'static str> {
+    let n = name.map(|s| s.to_lowercase()).unwrap_or_default();
+    let p = path.map(|s| s.to_lowercase()).unwrap_or_default();
+
+    // Detection par sous-chaine du chemin (le plus precis)
+    if p.contains("\\vite\\") || p.contains("/vite/") {
+        return Some("Vite");
+    }
+    if p.contains("\\next\\") || p.contains("/next/") {
+        return Some("Next.js");
+    }
+    if p.contains("docker") {
+        return Some("Docker");
+    }
+
+    // Combos port + runtime
+    let is_node = n.contains("node");
+    let is_python = n.contains("python") || n == "py.exe";
+    let is_java = n.contains("java");
+    let is_dotnet = n == "dotnet.exe" || n.contains("iis");
+
+    if is_node {
+        return Some(match port {
+            3000 => "Node (Express/Next)",
+            3001 => "Node (dev)",
+            4200 => "Angular",
+            5173 | 5174 => "Vite",
+            8080 => "Node",
+            8888 => "Node",
+            9229 => "Node debugger",
+            _ => "Node",
+        });
+    }
+    if is_python {
+        return Some(match port {
+            5000 => "Flask",
+            8000 => "Django/FastAPI",
+            8888 => "Jupyter",
+            _ => "Python",
+        });
+    }
+    if is_java {
+        return Some(match port {
+            8080 | 8443 => "Java/Tomcat",
+            _ => "Java",
+        });
+    }
+    if is_dotnet {
+        return Some(".NET / IIS");
+    }
+
+    // Services nommes
+    match n.as_str() {
+        "postgres.exe" | "postgresql.exe" => Some("PostgreSQL"),
+        "mysqld.exe" | "mysql.exe" => Some("MySQL"),
+        "mariadbd.exe" => Some("MariaDB"),
+        "redis-server.exe" => Some("Redis"),
+        "mongod.exe" => Some("MongoDB"),
+        "nginx.exe" => Some("Nginx"),
+        "httpd.exe" => Some("Apache"),
+        "sshd.exe" | "openssh-sshd.exe" => Some("SSH"),
+        "code.exe" => Some("VS Code"),
+        "discord.exe" => Some("Discord"),
+        "spotify.exe" => Some("Spotify"),
+        "chrome.exe" => Some("Chrome"),
+        "firefox.exe" => Some("Firefox"),
+        "msedge.exe" => Some("Edge"),
+        "wsl.exe" | "wslservice.exe" => Some("WSL"),
+        "ollama.exe" => Some("Ollama"),
+        _ => None,
+    }
 }
 
 fn analyze_risk(port: u16, process_name: Option<&str>) -> RiskInfo {

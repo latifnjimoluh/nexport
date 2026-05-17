@@ -71,5 +71,6 @@ pub struct PortRow {
     pub remote_addr: Option<String>,
     pub requires_admin: bool,
     pub risk: RiskInfo,
+    pub framework: Option<String>,
     pub opened_at: i64,
 }

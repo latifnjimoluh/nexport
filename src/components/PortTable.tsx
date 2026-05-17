@@ -198,6 +198,11 @@ export function PortTable({
           return (
             <div className="cell-truncate">
               {row.processName ?? <span className="muted">inconnu</span>}
+              {row.framework && (
+                <span className="badge badge--framework" title={`Detecte : ${row.framework}`}>
+                  {row.framework}
+                </span>
+              )}
               {row.requiresAdmin && (
                 <span className="badge" title="Droits admin requis">
                   admin

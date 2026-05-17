@@ -551,6 +551,13 @@ body {
   border-radius: 4px;
 }
 
+.badge--framework {
+  color: var(--accent);
+  background: rgba(79, 140, 255, 0.15);
+  text-transform: none;
+  letter-spacing: 0.2px;
+}
+
 /* States */
 .state {
   display: inline-block;
