@@ -14,6 +14,10 @@ pub struct Settings {
     pub auto_kill_ports: Vec<u16>,
     #[serde(default = "default_true")]
     pub auto_kill_enabled: bool,
+    #[serde(default)]
+    pub read_only: bool,
+    #[serde(default)]
+    pub pin_hash: Option<String>,
 }
 
 fn default_true() -> bool { true }
@@ -33,6 +37,8 @@ impl Default for Settings {
             theme: Theme::Dark,
             auto_kill_ports: Vec::new(),
             auto_kill_enabled: true,
+            read_only: false,
+            pin_hash: None,
         }
     }
 }

@@ -15,6 +15,8 @@ const DEFAULTS: Settings = {
   theme: "dark",
   autoKillPorts: [],
   autoKillEnabled: true,
+  readOnly: false,
+  pinHash: null,
 };
 
 export const useSettings = create<SettingsStore>()(
@@ -42,6 +44,8 @@ export const useSettings = create<SettingsStore>()(
           theme: get().theme,
           autoKillPorts: get().autoKillPorts ?? [],
           autoKillEnabled: get().autoKillEnabled ?? true,
+          readOnly: get().readOnly ?? false,
+          pinHash: get().pinHash ?? null,
         };
         const next: Settings = { ...previous, ...patch };
         set(next);
@@ -61,6 +65,8 @@ export const useSettings = create<SettingsStore>()(
         theme: s.theme,
         autoKillPorts: s.autoKillPorts ?? [],
         autoKillEnabled: s.autoKillEnabled ?? true,
+        readOnly: s.readOnly ?? false,
+        pinHash: s.pinHash ?? null,
       }),
     },
   ),

@@ -79,6 +79,8 @@ export interface Settings {
   theme: Theme;
   autoKillPorts: number[];
   autoKillEnabled: boolean;
+  readOnly: boolean;
+  pinHash: string | null;
 }
 
 export type RiskLevel = "SAFE" | "WARNING" | "DANGER";

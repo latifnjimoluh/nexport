@@ -8,6 +8,7 @@ import {
   isTauri,
 } from "../lib/api";
 import { confirmAction, showError } from "../lib/dialog";
+import { hashPin } from "../lib/pin";
 import type { Theme } from "../types";
 import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { check } from "@tauri-apps/plugin-updater";
@@ -246,6 +247,8 @@ export function SettingsPanel({ onClose }: Props) {
             </p>
           </section>
 
+          <ReadOnlySection />
+
           <FirewallSection />
 
           <section className="setting">
@@ -286,6 +289,54 @@ export function SettingsPanel({ onClose }: Props) {
         </footer>
       </div>
     </div>
+  );
+}
+
+function ReadOnlySection() {
+  const readOnly = useSettings((s) => s.readOnly ?? false);
+  const pinHash = useSettings((s) => s.pinHash ?? null);
+  const update = useSettings((s) => s.update);
+
+  async function toggle() {
+    if (readOnly) {
+      const pin = window.prompt("PIN actuel pour deverrouiller :") ?? "";
+      if (!pin) return;
+      const h = await hashPin(pin);
+      if (h !== pinHash) {
+        await showError("PIN incorrect", "Le mode lecture seule reste actif.");
+        return;
+      }
+      update({ readOnly: false, pinHash: null });
+    } else {
+      const a = window.prompt("Nouveau PIN (4-8 chiffres) :") ?? "";
+      if (a.length < 4 || a.length > 8) return;
+      const b = window.prompt("Confirmer le PIN :") ?? "";
+      if (a !== b) {
+        await showError("PINs differents", "Les deux entrees ne correspondent pas.");
+        return;
+      }
+      const h = await hashPin(a);
+      update({ readOnly: true, pinHash: h });
+    }
+  }
+
+  return (
+    <section className="setting">
+      <span className="setting__label">🔒 Mode lecture seule</span>
+      <p className="setting__hint">
+        Verrouille toutes les actions destructrices (kill, kill batch, blocage
+        pare-feu). Le PIN protege contre les clics accidentels — pas contre
+        un attaquant ayant acces a vos fichiers.
+      </p>
+      <button
+        type="button"
+        className={`btn btn--sm ${readOnly ? "btn--danger" : ""}`}
+        onClick={() => void toggle()}
+        style={{ alignSelf: "flex-start" }}
+      >
+        {readOnly ? "🔓 Deverrouiller" : "🔒 Verrouiller avec PIN"}
+      </button>
+    </section>
   );
 }
 

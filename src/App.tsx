@@ -37,6 +37,7 @@ export default function App() {
   const refreshMs = useSettings((s) => s.refreshMs);
   const notificationsEnabled = useSettings((s) => s.notificationsEnabled);
   const theme = useSettings((s) => s.theme);
+  const readOnly = useSettings((s) => s.readOnly ?? false);
   const hydrateSettings = useSettings((s) => s.hydrate);
   const updateSettings = useSettings((s) => s.update);
   const notificationsEnabledRef = useRef(notificationsEnabled);
@@ -156,6 +157,10 @@ export default function App() {
   );
 
   async function handleBlockPort(port: number, protocol: string) {
+    if (readOnly) {
+      setToast("🔒 Mode lecture seule — debloquer dans Settings");
+      return;
+    }
     const ok = await confirmAction(
       `Bloquer le port ${protocol} ${port} via le pare-feu Windows ?\n\n` +
         `Equivalent CLI :\nnetsh advfirewall firewall add rule ` +
@@ -235,6 +240,10 @@ export default function App() {
   );
 
   async function handleKillBatch() {
+    if (readOnly) {
+      setToast("🔒 Mode lecture seule — debloquer dans Settings");
+      return;
+    }
     if (selectedRows.length === 0) return;
     const cliPreview = selectedRows
       .slice(0, 3)
@@ -274,6 +283,10 @@ export default function App() {
   }
 
   async function handleKill(row: PortRow) {
+    if (readOnly) {
+      setToast("🔒 Mode lecture seule — debloquer dans Settings");
+      return;
+    }
     if (row.pid === null) return;
     const cli = killCliCommand(row.pid);
     const ok = await confirmAction(
@@ -325,6 +338,11 @@ export default function App() {
           >
             {elevateMutation.isPending ? "…" : "Relancer en admin"}
           </button>
+        )}
+        {readOnly && (
+          <span className="pill pill--warn" title="Mode lecture seule actif">
+            🔒 Lecture seule
+          </span>
         )}
         <button
           type="button"

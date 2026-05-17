@@ -240,6 +240,8 @@ const DEFAULT_SETTINGS: Settings = {
   theme: "dark",
   autoKillPorts: [],
   autoKillEnabled: true,
+  readOnly: false,
+  pinHash: null,
 };
 
 export async function getSettings(): Promise<Settings> {
