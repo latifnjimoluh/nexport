@@ -1,6 +1,6 @@
 [package]
 name = "nexport"
-version = "0.6.1"
+version = "0.6.2"
 description = "Visualiser et libérer les ports ouverts"
 authors = ["Nexus"]
 edition = "2021"
