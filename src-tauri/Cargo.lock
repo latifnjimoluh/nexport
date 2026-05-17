@@ -2305,7 +2305,7 @@ checksum = "650eef8c711430f1a879fdd01d4745a7deea475becfb90269c06775983bbf086"
 
 [[package]]
 name = "nexport"
-version = "0.6.4"
+version = "0.7.0"
 dependencies = [
  "libc",
  "netstat2",
