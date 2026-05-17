@@ -76,7 +76,9 @@ export type Theme = "dark" | "light";
 export interface Settings {
   refreshMs: number;
   notificationsEnabled: boolean;
+  soundEnabled: boolean;
   theme: Theme;
+  language: "fr" | "en";
   autoKillPorts: number[];
   autoKillEnabled: boolean;
   readOnly: boolean;

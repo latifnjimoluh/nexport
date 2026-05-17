@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSettings } from "../store/settings";
 import { REFRESH_OPTIONS } from "../store/filters";
+import { sound } from "../lib/sound";
+import { useTranslation } from "../lib/i18n";
 import {
   firewallListBlocks,
   firewallUnblockPort,
@@ -19,15 +21,23 @@ interface Props {
   onClose: () => void;
 }
 
-const THEMES: { value: Theme; label: string }[] = [
-  { value: "dark", label: "Sombre" },
-  { value: "light", label: "Clair" },
+const THEMES: { value: Theme; label: Record<string, string> }[] = [
+  { value: "dark", label: { fr: "Sombre", en: "Dark" } },
+  { value: "light", label: { fr: "Clair", en: "Light" } },
+];
+
+const LANGUAGES = [
+  { value: "fr", label: "Français" },
+  { value: "en", label: "English" },
 ];
 
 export function SettingsPanel({ onClose }: Props) {
+  const { t, language } = useTranslation();
   const refreshMs = useSettings((s) => s.refreshMs);
   const notificationsEnabled = useSettings((s) => s.notificationsEnabled);
+  const soundEnabled = useSettings((s) => s.soundEnabled);
   const theme = useSettings((s) => s.theme);
+  const currentLanguage = useSettings((s) => s.language);
   const autoKillPorts = useSettings((s) => s.autoKillPorts ?? []);
   const autoKillEnabled = useSettings((s) => s.autoKillEnabled ?? true);
   const update = useSettings((s) => s.update);
@@ -51,33 +61,33 @@ export function SettingsPanel({ onClose }: Props) {
     setUpdateChecking(true);
     setUpdateStatus(null);
     try {
-      const update = await check();
-      if (!update) {
-        setUpdateStatus("✓ Vous êtes à jour.");
+      const updateResult = await check();
+      if (!updateResult) {
+        setUpdateStatus("✓ " + (language === "fr" ? "Vous êtes à jour." : "You are up to date."));
         return;
       }
       const ok = await confirmAction(
-        `Version disponible : ${update.version}\n` +
-          (update.body ? `\nNotes : ${update.body}\n` : "") +
+        `Version disponible : ${updateResult.version}\n` +
+          (updateResult.body ? `\nNotes : ${updateResult.body}\n` : "") +
           `\nTélécharger et installer maintenant ?`,
         {
-          title: "Mise à jour disponible",
-          okLabel: "Installer",
-          cancelLabel: "Plus tard",
+          title: t("updates"),
+          okLabel: language === "fr" ? "Installer" : "Install",
+          cancelLabel: language === "fr" ? "Plus tard" : "Later",
         },
       );
       if (!ok) {
-        setUpdateStatus(`Version ${update.version} disponible — installation reportée.`);
+        setUpdateStatus(`Version ${updateResult.version} available — installation postponed.`);
         return;
       }
-      setUpdateStatus("Téléchargement…");
-      await update.downloadAndInstall();
-      setUpdateStatus("Installation terminée — redémarrage…");
+      setUpdateStatus(language === "fr" ? "Téléchargement…" : "Downloading...");
+      await updateResult.downloadAndInstall();
+      setUpdateStatus(language === "fr" ? "Installation terminée — redémarrage…" : "Installation finished — restarting...");
       await relaunch();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setUpdateStatus(`Erreur : ${msg}`);
-      void showError("Échec de la vérification", msg);
+      void showError(language === "fr" ? "Échec de la vérification" : "Check failed", msg);
     } finally {
       setUpdateChecking(false);
     }
@@ -88,12 +98,15 @@ export function SettingsPanel({ onClose }: Props) {
       if (autostartActive) {
         await disable();
         setAutostartActive(false);
+        sound.toggleOff();
       } else {
         await enable();
         setAutostartActive(true);
+        sound.toggleOn();
       }
     } catch (e) {
-      console.error("Erreur autostart:", e);
+      const msg = e instanceof Error ? e.message : String(e);
+      void showError("Erreur Autostart", "Impossible de modifier le démarrage automatique : " + msg);
     }
   };
 
@@ -119,12 +132,12 @@ export function SettingsPanel({ onClose }: Props) {
     >
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <header className="modal__header">
-          <h2>Réglages</h2>
+          <h2>{t("settings")}</h2>
           <button
             type="button"
             className="btn btn--ghost btn--sm"
             onClick={onClose}
-            aria-label="Fermer"
+            aria-label={t("close")}
           >
             ✕
           </button>
@@ -133,7 +146,7 @@ export function SettingsPanel({ onClose }: Props) {
         <div className="modal__body">
           <section className="setting">
             <label className="setting__label" htmlFor="set-refresh">
-              Intervalle d'auto-refresh
+              {t("refresh_interval")}
             </label>
             <select
               id="set-refresh"
@@ -147,8 +160,9 @@ export function SettingsPanel({ onClose }: Props) {
               ))}
             </select>
             <p className="setting__hint">
-              Le watcher Rust détecte aussi les changements en plus du polling.
-              Tu peux passer à <code>Off</code> sans perdre les notifications.
+              {language === "fr" 
+                ? "Le watcher Rust détecte aussi les changements en plus du polling." 
+                : "Rust watcher also detects changes in addition to polling."}
             </p>
           </section>
 
@@ -157,32 +171,51 @@ export function SettingsPanel({ onClose }: Props) {
               <input
                 type="checkbox"
                 checked={notificationsEnabled}
-                onChange={(e) =>
-                  update({ notificationsEnabled: e.target.checked })
-                }
+                onChange={(e) => {
+                  if (e.target.checked) sound.toggleOn();
+                  else sound.toggleOff();
+                  update({ notificationsEnabled: e.target.checked });
+                }}
               />
-              Notifications natives pour les ports favoris
+              {t("notifications")}
             </label>
-            <p className="setting__hint">
-              Coupe tous les toasts OS quand un port favori s'ouvre ou se ferme.
-            </p>
+          </section>
+
+          <section className="setting">
+            <label className="setting__label">
+              <input
+                type="checkbox"
+                checked={soundEnabled}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    update({ soundEnabled: true });
+                    sound.toggleOn();
+                  } else {
+                    sound.toggleOff();
+                    update({ soundEnabled: false });
+                  }
+                }}
+              />
+              {t("sounds")}
+            </label>
           </section>
 
           <section className="setting">
             <div className="setting__header-row">
-              <label className="setting__label">⚡ Auto-Kill (Force Libération)</label>
+              <label className="setting__label">⚡ Auto-Kill</label>
               <label className="switch">
                 <input
                   type="checkbox"
                   checked={autoKillEnabled}
-                  onChange={(e) => update({ autoKillEnabled: e.target.checked })}
+                  onChange={(e) => {
+                    if (e.target.checked) sound.toggleOn();
+                    else sound.toggleOff();
+                    update({ autoKillEnabled: e.target.checked });
+                  }}
                 />
                 <span className="switch__label">{autoKillEnabled ? "ON" : "OFF"}</span>
               </label>
             </div>
-            <p className="setting__hint">
-              Tuer automatiquement tout processus qui tente d'utiliser ces ports.
-            </p>
             <div className={!autoKillEnabled ? "setting--dim" : ""}>
               <form onSubmit={handleAddPort} className="setting__row">
                 <input
@@ -195,7 +228,7 @@ export function SettingsPanel({ onClose }: Props) {
                   disabled={!autoKillEnabled}
                 />
                 <button type="submit" className="btn btn--sm" disabled={!autoKillEnabled}>
-                  Ajouter
+                  {language === "fr" ? "Ajouter" : "Add"}
                 </button>
               </form>
               {autoKillPorts.length > 0 && (
@@ -217,16 +250,38 @@ export function SettingsPanel({ onClose }: Props) {
           </section>
 
           <section className="setting">
-            <span className="setting__label">Thème</span>
+            <span className="setting__label">{t("theme")}</span>
             <div className="toolbar__group">
-              {THEMES.map((t) => (
+              {THEMES.map((t_item) => (
                 <button
-                  key={t.value}
+                  key={t_item.value}
                   type="button"
-                  className={`chip ${theme === t.value ? "chip--active" : ""}`}
-                  onClick={() => update({ theme: t.value })}
+                  className={`chip ${theme === t_item.value ? "chip--active" : ""}`}
+                  onClick={() => {
+                    sound.click();
+                    update({ theme: t_item.value });
+                  }}
                 >
-                  {t.label}
+                  {t_item.label[language]}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="setting">
+            <span className="setting__label">{t("language")}</span>
+            <div className="toolbar__group">
+              {LANGUAGES.map((l) => (
+                <button
+                  key={l.value}
+                  type="button"
+                  className={`chip ${currentLanguage === l.value ? "chip--active" : ""}`}
+                  onClick={() => {
+                    sound.click();
+                    update({ language: l.value as "fr" | "en" });
+                  }}
+                >
+                  {l.label}
                 </button>
               ))}
             </div>
@@ -240,11 +295,8 @@ export function SettingsPanel({ onClose }: Props) {
                 onChange={handleToggleAutostart}
                 disabled={!isTauri}
               />
-              Démarrer avec Windows
+              {t("autostart")}
             </label>
-            <p className="setting__hint">
-              Lance automatiquement <code>NexPort</code> à l'ouverture de votre session.
-            </p>
           </section>
 
           <ReadOnlySection />
@@ -252,9 +304,9 @@ export function SettingsPanel({ onClose }: Props) {
           <FirewallSection />
 
           <section className="setting">
-            <span className="setting__label">Mises à jour</span>
+            <span className="setting__label">{t("updates")}</span>
             <p className="setting__hint">
-              Version installée : <code>NexPort v{appVersion || "?"}</code>
+              {t("version")} : <code>NexPort v{appVersion || "?"}</code>
             </p>
             <button
               type="button"
@@ -263,7 +315,7 @@ export function SettingsPanel({ onClose }: Props) {
               disabled={!isTauri || updateChecking}
               style={{ alignSelf: "flex-start" }}
             >
-              {updateChecking ? "Vérification…" : "Vérifier les mises à jour"}
+              {updateChecking ? "..." : t("check_updates")}
             </button>
             {updateStatus && (
               <p className="setting__hint" style={{ marginTop: 8 }}>
@@ -276,15 +328,15 @@ export function SettingsPanel({ onClose }: Props) {
         <footer className="modal__footer">
           {isTauri ? (
             <span className="muted">
-              Sauvegardé dans <code>%APPDATA%\dev.nexport.desktop\settings.json</code>
+              {t("save_location")} <code>%APPDATA%\dev.nexport.desktop\settings.json</code>
             </span>
           ) : (
             <span className="muted">
-              Mode navigateur — préférences en localStorage uniquement
+              {t("browser_mode")}
             </span>
           )}
           <button type="button" className="btn btn--primary" onClick={onClose}>
-            Fermer
+            {t("close")}
           </button>
         </footer>
       </div>
@@ -293,26 +345,27 @@ export function SettingsPanel({ onClose }: Props) {
 }
 
 function ReadOnlySection() {
+  const { t, language } = useTranslation();
   const readOnly = useSettings((s) => s.readOnly ?? false);
   const pinHash = useSettings((s) => s.pinHash ?? null);
   const update = useSettings((s) => s.update);
 
   async function toggle() {
     if (readOnly) {
-      const pin = window.prompt("PIN actuel pour deverrouiller :") ?? "";
+      const pin = window.prompt(language === "fr" ? "PIN actuel pour déverrouiller :" : "Current PIN to unlock:") ?? "";
       if (!pin) return;
       const h = await hashPin(pin);
       if (h !== pinHash) {
-        await showError("PIN incorrect", "Le mode lecture seule reste actif.");
+        await showError(language === "fr" ? "PIN incorrect" : "Incorrect PIN", language === "fr" ? "Le mode lecture seule reste actif." : "Read only mode remains active.");
         return;
       }
       update({ readOnly: false, pinHash: null });
     } else {
-      const a = window.prompt("Nouveau PIN (4-8 chiffres) :") ?? "";
+      const a = window.prompt(language === "fr" ? "Nouveau PIN (4-8 chiffres) :" : "New PIN (4-8 digits):") ?? "";
       if (a.length < 4 || a.length > 8) return;
-      const b = window.prompt("Confirmer le PIN :") ?? "";
+      const b = window.prompt(language === "fr" ? "Confirmer le PIN :" : "Confirm PIN:") ?? "";
       if (a !== b) {
-        await showError("PINs differents", "Les deux entrees ne correspondent pas.");
+        await showError(language === "fr" ? "PINs différents" : "PINs do not match", language === "fr" ? "Les deux entrées ne correspondent pas." : "The two entries do not match.");
         return;
       }
       const h = await hashPin(a);
@@ -322,25 +375,29 @@ function ReadOnlySection() {
 
   return (
     <section className="setting">
-      <span className="setting__label">🔒 Mode lecture seule</span>
+      <span className="setting__label">🔒 {t("read_only")}</span>
       <p className="setting__hint">
-        Verrouille toutes les actions destructrices (kill, kill batch, blocage
-        pare-feu). Le PIN protege contre les clics accidentels — pas contre
-        un attaquant ayant acces a vos fichiers.
+        {language === "fr" 
+          ? "Verrouille toutes les actions destructrices (kill, kill batch, blocage pare-feu)." 
+          : "Locks all destructive actions (kill, bulk kill, firewall block)."}
       </p>
       <button
         type="button"
         className={`btn btn--sm ${readOnly ? "btn--danger" : ""}`}
-        onClick={() => void toggle()}
+        onClick={() => {
+          sound.click();
+          void toggle();
+        }}
         style={{ alignSelf: "flex-start" }}
       >
-        {readOnly ? "🔓 Deverrouiller" : "🔒 Verrouiller avec PIN"}
+        {readOnly ? (language === "fr" ? "🔓 Déverrouiller" : "🔓 Unlock") : (language === "fr" ? "🔒 Verrouiller avec PIN" : "🔒 Lock with PIN")}
       </button>
     </section>
   );
 }
 
 function FirewallSection() {
+  const { language } = useTranslation();
   const queryClient = useQueryClient();
   const blocksQuery = useQuery({
     queryKey: ["firewall_blocks"],
@@ -350,25 +407,29 @@ function FirewallSection() {
   const unblock = useMutation({
     mutationFn: (params: { port: number; protocol: string }) =>
       firewallUnblockPort(params.port, params.protocol),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["firewall_blocks"] }),
-    onError: (e: Error) =>
-      void showError("Echec deblocage", e.message || "Erreur inconnue."),
+    onSuccess: () => {
+      sound.success();
+      queryClient.invalidateQueries({ queryKey: ["firewall_blocks"] });
+    },
+    onError: (e: Error) => {
+      sound.error();
+      void showError(language === "fr" ? "Échec déblocage" : "Unblock failed", e.message || "Unknown error.");
+    },
   });
 
   const blocks = blocksQuery.data ?? [];
 
   return (
     <section className="setting">
-      <span className="setting__label">🛡 Pare-feu Windows</span>
+      <span className="setting__label">🛡 {language === "fr" ? "Pare-feu Windows" : "Windows Firewall"}</span>
       <p className="setting__hint">
-        Ports bloques en entree via <code>netsh advfirewall</code>. Necessite
-        des droits administrateur pour ajouter ou supprimer une regle.
+        {language === "fr" 
+          ? "Ports bloqués en entrée via netsh advfirewall." 
+          : "Inbound ports blocked via netsh advfirewall."}
       </p>
       {blocks.length === 0 ? (
         <p className="muted" style={{ fontSize: 12 }}>
-          Aucun port bloque pour le moment. Utilise le bouton 🛡 dans le
-          tableau des ports.
+          {language === "fr" ? "Aucun port bloqué pour le moment." : "No ports blocked for now."}
         </p>
       ) : (
         <div className="setting__chips">
@@ -379,10 +440,11 @@ function FirewallSection() {
                 type="button"
                 className="chip__remove"
                 disabled={unblock.isPending}
-                onClick={() =>
-                  unblock.mutate({ port: b.port, protocol: b.protocol })
-                }
-                title="Debloquer"
+                onClick={() => {
+                  sound.click();
+                  unblock.mutate({ port: b.port, protocol: b.protocol });
+                }}
+                title={language === "fr" ? "Débloquer" : "Unblock"}
               >
                 ✕
               </button>

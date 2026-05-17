@@ -18,6 +18,7 @@ import {
 import { GeoBadge } from "./GeoBadge";
 import { useFavorites } from "../store/favorites";
 import { useTableState } from "../store/table";
+import { sound } from "../lib/sound";
 import type { PortRow } from "../types";
 
 interface Props {
@@ -63,6 +64,7 @@ export function PortTable({
   }, [rows, favSet]);
 
   const handleCopy = async (value: string, label: string) => {
+    sound.click();
     try {
       await copyToClipboard(value);
       onNotify?.(`${label} copié`);
@@ -74,6 +76,7 @@ export function PortTable({
   };
 
   const handleOpen = async (path: string) => {
+    sound.click();
     try {
       await openProcessFolder(path);
     } catch (e) {
@@ -84,6 +87,7 @@ export function PortTable({
   };
 
   const handleOpenCwd = async (cwd: string) => {
+    sound.click();
     try {
       await openCwd(cwd);
     } catch (e) {
@@ -299,6 +303,7 @@ export function PortTable({
                   type="button"
                   className="btn btn--ghost btn--sm"
                   onClick={() => {
+                    sound.click();
                     const proto = row.port === 443 ? "https" : "http";
                     openInBrowser(`${proto}://localhost:${row.port}`);
                   }}
@@ -310,9 +315,12 @@ export function PortTable({
               {onShowDetails && (
                 <button
                   type="button"
-                  className="btn btn--ghost btn--sm"
+                  className="btn--ghost btn--sm"
                   disabled={row.pid === null}
-                  onClick={() => row.pid !== null && onShowDetails(row.pid)}
+                  onClick={() => {
+                    sound.click();
+                    row.pid !== null && onShowDetails(row.pid);
+                  }}
                   title="Voir les details du process"
                 >
                   ℹ
@@ -394,7 +402,10 @@ export function PortTable({
                         <button
                           type="button"
                           className="th-btn"
-                          onClick={h.column.getToggleSortingHandler()}
+                          onClick={() => {
+                            sound.click();
+                            h.column.toggleSorting();
+                          }}
                         >
                           {flexRender(
                             h.column.columnDef.header,

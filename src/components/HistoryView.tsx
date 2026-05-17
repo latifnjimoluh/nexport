@@ -8,24 +8,26 @@ import {
   listEvents,
 } from "../lib/api";
 import { confirmAction, showError } from "../lib/dialog";
+import { useTranslation } from "../lib/i18n";
 import type { EventFilter, EventKind, EventRow } from "../types";
-
-const KIND_OPTIONS: { value: "" | EventKind; label: string }[] = [
-  { value: "", label: "Tous types" },
-  { value: "opened", label: "Ouvert" },
-  { value: "closed", label: "Fermé" },
-  { value: "killed", label: "Tué" },
-];
 
 interface Props {
   onNotify?: (msg: string) => void;
 }
 
 export function HistoryView({ onNotify }: Props) {
+  const { t, language } = useTranslation();
   const queryClient = useQueryClient();
   const [kind, setKind] = useState<"" | EventKind>("");
   const [portInput, setPortInput] = useState("");
   const [limit, setLimit] = useState<number>(500);
+
+  const KIND_OPTIONS: { value: "" | EventKind; label: string }[] = useMemo(() => [
+    { value: "", label: t("all") },
+    { value: "opened", label: language === "fr" ? "Ouvert" : "Opened" },
+    { value: "closed", label: language === "fr" ? "Fermé" : "Closed" },
+    { value: "killed", label: language === "fr" ? "Tué" : "Killed" },
+  ], [t, language]);
 
   const filter: EventFilter = useMemo(() => {
     const p = parseInt(portInput, 10);
@@ -45,11 +47,11 @@ export function HistoryView({ onNotify }: Props) {
   const clearMutation = useMutation({
     mutationFn: clearEvents,
     onSuccess: (n) => {
-      onNotify?.(`${n} événements supprimés`);
+      onNotify?.(`${n} ` + (language === "fr" ? "événements supprimés" : "events cleared"));
       queryClient.invalidateQueries({ queryKey: ["events"] });
     },
     onError: (e: Error) =>
-      void showError("Échec du clear", e.message || "Erreur inconnue."),
+      void showError(language === "fr" ? "Échec du clear" : "Clear failed", e.message || "Unknown error."),
   });
 
   const exportMutation = useMutation({
@@ -68,20 +70,20 @@ export function HistoryView({ onNotify }: Props) {
     },
     onSuccess: (res) => {
       if (!res) return;
-      onNotify?.(`Export terminé : ${res.n} lignes → ${res.path}`);
+      onNotify?.((language === "fr" ? "Export terminé" : "Export finished") + ` : ${res.n} lines → ${res.path}`);
     },
     onError: (e: Error) =>
-      void showError("Échec de l'export", e.message || "Erreur inconnue."),
+      void showError(language === "fr" ? "Échec de l'export" : "Export failed", e.message || "Unknown error."),
   });
 
   async function handleClear() {
     const ok = await confirmAction(
-      "Supprimer tout l'historique local ? Cette action est irréversible.",
+      language === "fr" ? "Supprimer tout l'historique local ? Cette action est irréversible." : "Delete all local history? This action is irreversible.",
       {
-        title: "Vider l'historique",
+        title: language === "fr" ? "Vider l'historique" : "Clear history",
         destructive: true,
-        okLabel: "Vider",
-        cancelLabel: "Annuler",
+        okLabel: language === "fr" ? "Vider" : "Clear",
+        cancelLabel: t("cancel"),
       },
     );
     if (!ok) return;
@@ -120,7 +122,7 @@ export function HistoryView({ onNotify }: Props) {
         />
 
         <label className="toolbar__select">
-          <span className="toolbar__select-label">Limite</span>
+          <span className="toolbar__select-label">{language === "fr" ? "Limite" : "Limit"}</span>
           <select
             value={limit}
             onChange={(e) => setLimit(Number(e.target.value))}
@@ -133,7 +135,7 @@ export function HistoryView({ onNotify }: Props) {
           </select>
         </label>
 
-        <span className="toolbar__count">{events.length} lignes</span>
+        <span className="toolbar__count">{events.length} {language === "fr" ? "lignes" : "lines"}</span>
 
         <button
           type="button"
@@ -141,7 +143,7 @@ export function HistoryView({ onNotify }: Props) {
           onClick={() => query.refetch()}
           disabled={query.isFetching}
         >
-          {query.isFetching ? "…" : "Rafraîchir"}
+          {query.isFetching ? "…" : t("refresh")}
         </button>
         <button
           type="button"
@@ -165,7 +167,7 @@ export function HistoryView({ onNotify }: Props) {
           onClick={handleClear}
           disabled={!isTauri || clearMutation.isPending || events.length === 0}
         >
-          Vider
+          {language === "fr" ? "Vider" : "Clear"}
         </button>
       </div>
 
@@ -178,15 +180,15 @@ export function HistoryView({ onNotify }: Props) {
       {events.length === 0 ? (
         <div className="empty">
           {isTauri
-            ? "Aucun événement. Laisse l'app tourner un peu, ou épingle des ports."
-            : "Historique indisponible en mode navigateur (SQLite est côté Rust)."}
+            ? (language === "fr" ? "Aucun événement. Laisse l'app tourner un peu, ou épingle des ports." : "No events. Let the app run for a while, or pin some ports.")
+            : t("browser_mode")}
         </div>
       ) : (
         <div className="table-wrap">
           <table className="ports">
             <thead>
               <tr>
-                <th>Horodatage</th>
+                <th>{language === "fr" ? "Horodatage" : "Timestamp"}</th>
                 <th>Type</th>
                 <th>Port</th>
                 <th>Proto</th>
@@ -205,7 +207,7 @@ export function HistoryView({ onNotify }: Props) {
                   <td>{e.protocol}</td>
                   <td className="mono">{e.pid ?? "—"}</td>
                   <td>
-                    {e.process ?? <span className="muted">inconnu</span>}
+                    {e.process ?? <span className="muted">{language === "fr" ? "inconnu" : "unknown"}</span>}
                   </td>
                 </tr>
               ))}

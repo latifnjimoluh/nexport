@@ -7,6 +7,8 @@ import {
   removeFavorite,
 } from "../lib/api";
 
+import { sound } from "../lib/sound";
+
 interface FavoritesState {
   favorites: number[];
   hydrated: boolean;
@@ -22,6 +24,10 @@ export const useFavorites = create<FavoritesState>()(
       hydrated: false,
       toggle: (port) => {
         const has = get().favorites.includes(port);
+        
+        if (has) sound.toggleOff();
+        else sound.toggleOn();
+
         // Optimiste : on met à jour l'UI tout de suite.
         set((s) => ({
           favorites: has

@@ -12,7 +12,9 @@ interface SettingsStore extends Settings {
 const DEFAULTS: Settings = {
   refreshMs: 2000,
   notificationsEnabled: true,
+  soundEnabled: true,
   theme: "dark",
+  language: "fr",
   autoKillPorts: [],
   autoKillEnabled: true,
   readOnly: false,
@@ -41,7 +43,9 @@ export const useSettings = create<SettingsStore>()(
         const previous: Settings = {
           refreshMs: get().refreshMs,
           notificationsEnabled: get().notificationsEnabled,
+          soundEnabled: get().soundEnabled,
           theme: get().theme,
+          language: get().language,
           autoKillPorts: get().autoKillPorts ?? [],
           autoKillEnabled: get().autoKillEnabled ?? true,
           readOnly: get().readOnly ?? false,
@@ -62,7 +66,9 @@ export const useSettings = create<SettingsStore>()(
       partialize: (s): Settings => ({
         refreshMs: s.refreshMs,
         notificationsEnabled: s.notificationsEnabled,
+        soundEnabled: s.soundEnabled,
         theme: s.theme,
+        language: s.language,
         autoKillPorts: s.autoKillPorts ?? [],
         autoKillEnabled: s.autoKillEnabled ?? true,
         readOnly: s.readOnly ?? false,

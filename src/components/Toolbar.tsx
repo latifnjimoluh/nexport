@@ -1,3 +1,6 @@
+import { sound } from "../lib/sound";
+import { useTranslation } from "../lib/i18n";
+
 interface RefreshOption {
   readonly label: string;
   readonly value: number;
@@ -34,12 +37,30 @@ export function Toolbar({
   onFavoritesOnlyChange,
   favoritesCount,
 }: Props) {
+  const { t } = useTranslation();
+
+  const handleRefresh = () => {
+    sound.click();
+    onRefresh();
+  };
+
+  const handleProtocolChange = (p: "ALL" | "TCP" | "UDP") => {
+    sound.click();
+    onProtocolChange(p);
+  };
+
+  const handleFavoritesToggle = () => {
+    if (favoritesOnly) sound.toggleOff();
+    else sound.toggleOn();
+    onFavoritesOnlyChange(!favoritesOnly);
+  };
+
   return (
     <div className="toolbar">
       <input
         className="toolbar__search"
         type="search"
-        placeholder="Rechercher  ·  ex: port:>3000  name:node  state:LISTEN"
+        placeholder={t("searching")}
         title={
           "Operateurs : port:3000  port:>3000  port:3000-4000  pid:1234  " +
           "name:node  path:nodejs  state:LISTEN  proto:TCP  fav:true\n" +
@@ -55,9 +76,9 @@ export function Toolbar({
             key={p}
             type="button"
             className={`chip ${protocolFilter === p ? "chip--active" : ""}`}
-            onClick={() => onProtocolChange(p)}
+            onClick={() => handleProtocolChange(p)}
           >
-            {p === "ALL" ? "Tous" : p}
+            {p === "ALL" ? t("all") : p}
           </button>
         ))}
       </div>
@@ -65,7 +86,7 @@ export function Toolbar({
       <button
         type="button"
         className={`chip ${favoritesOnly ? "chip--active" : ""}`}
-        onClick={() => onFavoritesOnlyChange(!favoritesOnly)}
+        onClick={handleFavoritesToggle}
         disabled={favoritesCount === 0 && !favoritesOnly}
         title={
           favoritesCount === 0 && !favoritesOnly
@@ -73,14 +94,17 @@ export function Toolbar({
             : "Afficher uniquement les favoris"
         }
       >
-        ★ Favoris ({favoritesCount})
+        ★ {t("favorites")} ({favoritesCount})
       </button>
 
       <label className="toolbar__select">
-        <span className="toolbar__select-label">Auto</span>
+        <span className="toolbar__select-label">{t("auto")}</span>
         <select
           value={refreshMs}
-          onChange={(e) => onRefreshMsChange(Number(e.target.value))}
+          onChange={(e) => {
+            sound.click();
+            onRefreshMsChange(Number(e.target.value));
+          }}
         >
           {refreshOptions.map((o) => (
             <option key={o.value} value={o.value}>
@@ -90,15 +114,15 @@ export function Toolbar({
         </select>
       </label>
 
-      <span className="toolbar__count">{count} ports</span>
+      <span className="toolbar__count">{count} {t("ports")}</span>
 
       <button
         type="button"
         className="btn btn--primary"
-        onClick={onRefresh}
+        onClick={handleRefresh}
         disabled={loading}
       >
-        {loading ? "…" : "Rafraîchir"}
+        {loading ? "…" : t("refresh")}
       </button>
     </div>
   );

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { RowSelectionState } from "@tanstack/react-table";
 import { HistoryView } from "./components/HistoryView";
+import { DashboardView } from "./components/DashboardView";
 import { ProcessDetailsPanel } from "./components/ProcessDetailsPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { Toolbar } from "./components/Toolbar";
@@ -19,6 +20,8 @@ import {
 } from "./lib/api";
 import { confirmAction, showError } from "./lib/dialog";
 import { notify } from "./lib/notify";
+import { sound } from "./lib/sound";
+import { useTranslation } from "./lib/i18n";
 import { killCliCommand } from "./lib/platform";
 import { matchesQuery, parseQuery } from "./lib/search";
 import { useFavorites } from "./store/favorites";
@@ -27,6 +30,7 @@ import { useSettings } from "./store/settings";
 import type { PortRow } from "./types";
 
 export default function App() {
+  const { t } = useTranslation();
   const search = useFilters((s) => s.search);
   const setSearch = useFilters((s) => s.setSearch);
   const protocolFilter = useFilters((s) => s.protocolFilter);
@@ -63,7 +67,7 @@ export default function App() {
 
   const queryClient = useQueryClient();
   const [toast, setToast] = useState<string | null>(null);
-  const [view, setView] = useState<"ports" | "history">("ports");
+  const [view, setView] = useState<"ports" | "history" | "dashboard">("ports");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [detailsPid, setDetailsPid] = useState<number | null>(null);
@@ -99,9 +103,9 @@ export default function App() {
       if (!notificationsEnabledRef.current) return;
       if (evt.kind === "opened") {
         const who = evt.processName ? ` (${evt.processName})` : "";
-        void notify("Port favori ouvert", `${evt.protocol} ${evt.port}${who}`);
+        void notify(t("port_favori_ouvert"), `${evt.protocol} ${evt.port}${who}`);
       } else {
-        void notify("Port favori fermé", `${evt.protocol} ${evt.port}`);
+        void notify(t("port_favori_ferme"), `${evt.protocol} ${evt.port}`);
       }
     }).then((un) => {
       if (active) unlisten = un;
@@ -111,7 +115,7 @@ export default function App() {
       active = false;
       unlisten?.();
     };
-  }, [queryClient]);
+  }, [queryClient, t]);
 
   // Watcher: écoute les échecs Auto-Kill (souvent par manque d'admin) et
   // alerte l'utilisateur. Le backend dédoublonne déjà par port.
@@ -119,7 +123,7 @@ export default function App() {
     let unlisten: (() => void) | undefined;
     let active = true;
     void onAutoKillError((e) => {
-      setToast(`⚠ Auto-Kill ${e.protocol} ${e.port} échoué : ${e.reason}`);
+      setToast(`⚠ ${t("auto_kill_failed")} ${e.protocol} ${e.port} : ${e.reason}`);
     }).then((un) => {
       if (active) unlisten = un;
       else un();
@@ -128,7 +132,7 @@ export default function App() {
       active = false;
       unlisten?.();
     };
-  }, []);
+  }, [t]);
 
   const query = useQuery<PortRow[], Error>({
     queryKey: ["ports"],
@@ -158,7 +162,7 @@ export default function App() {
 
   async function handleBlockPort(port: number, protocol: string) {
     if (readOnly) {
-      setToast("🔒 Mode lecture seule — debloquer dans Settings");
+      setToast("🔒 " + t("read_only"));
       return;
     }
     const ok = await confirmAction(
@@ -177,9 +181,11 @@ export default function App() {
     if (!ok) return;
     try {
       await firewallBlockPort(port, protocol);
-      setToast(`🛡 ${protocol} ${port} bloque`);
+      sound.success();
+      setToast(`🛡 ${protocol} ${port} ${t("firewall_blocked")}`);
       queryClient.invalidateQueries({ queryKey: ["firewall_blocks"] });
     } catch (e) {
+      sound.error();
       void showError(
         "Echec du blocage",
         e instanceof Error ? e.message : String(e),
@@ -189,11 +195,13 @@ export default function App() {
 
   const elevateMutation = useMutation({
     mutationFn: relaunchAsAdmin,
-    onError: (e: Error) =>
+    onError: (e: Error) => {
+      sound.error();
       void showError(
         "Impossible de relancer en admin",
         e.message || "Erreur inconnue.",
-      ),
+      );
+    },
   });
 
   async function handleElevate() {
@@ -207,17 +215,21 @@ export default function App() {
       },
     );
     if (!ok) return;
+    sound.click();
     elevateMutation.mutate();
   }
 
   const killMutation = useMutation({
     mutationFn: (pid: number) => killProcess(pid),
     onSuccess: (_data, pid) => {
-      setToast(`✓ ${killCliCommand(pid)}`);
+      sound.success();
+      setToast(`✓ ${t("kill_success")} (${pid})`);
       queryClient.invalidateQueries({ queryKey: ["ports"] });
     },
-    onError: (e: Error) =>
-      void showError("Échec du kill", e.message || "Erreur inconnue."),
+    onError: (e: Error) => {
+      sound.error();
+      void showError(t("kill_failed"), e.message || "Erreur inconnue.");
+    },
   });
 
   const rows = query.data ?? [];
@@ -241,7 +253,7 @@ export default function App() {
 
   async function handleKillBatch() {
     if (readOnly) {
-      setToast("🔒 Mode lecture seule — debloquer dans Settings");
+      setToast("🔒 " + t("read_only"));
       return;
     }
     if (selectedRows.length === 0) return;
@@ -273,6 +285,10 @@ export default function App() {
         failed++;
       }
     }
+
+    if (failed === 0) sound.success();
+    else sound.error();
+
     setRowSelection({});
     queryClient.invalidateQueries({ queryKey: ["ports"] });
     setToast(
@@ -284,7 +300,7 @@ export default function App() {
 
   async function handleKill(row: PortRow) {
     if (readOnly) {
-      setToast("🔒 Mode lecture seule — debloquer dans Settings");
+      setToast("🔒 " + t("read_only"));
       return;
     }
     if (row.pid === null) return;
@@ -317,7 +333,7 @@ export default function App() {
           Ports ouverts &middot; processus &middot; actions rapides
         </span>
         <span className={`pill ${isTauri ? "pill--ok" : "pill--warn"}`}>
-          {isTauri ? "backend Rust" : "mode mock (navigateur)"}
+          {isTauri ? t("backend_rust") : t("mode_mock")}
         </span>
         <span
           className={`pill ${elevated ? "pill--admin" : "pill--standard"}`}
@@ -327,7 +343,7 @@ export default function App() {
               : "L'app tourne en mode standard. Certains kills peuvent échouer."
           }
         >
-          {elevated ? "mode admin" : "mode standard"}
+          {elevated ? t("mode_admin") : t("mode_standard")}
         </span>
         {isTauri && !elevated && (
           <button
@@ -336,19 +352,19 @@ export default function App() {
             onClick={handleElevate}
             disabled={elevateMutation.isPending}
           >
-            {elevateMutation.isPending ? "…" : "Relancer en admin"}
+            {elevateMutation.isPending ? "…" : t("relaunch_admin")}
           </button>
         )}
         {readOnly && (
           <span className="pill pill--warn" title="Mode lecture seule actif">
-            🔒 Lecture seule
+            🔒 {t("read_only")}
           </span>
         )}
         <button
           type="button"
           className="btn btn--sm"
           onClick={() => setSettingsOpen(true)}
-          title="Réglages"
+          title={t("settings")}
         >
           ⚙
         </button>
@@ -360,22 +376,40 @@ export default function App() {
           role="tab"
           aria-selected={view === "ports"}
           className={`tab ${view === "ports" ? "tab--active" : ""}`}
-          onClick={() => setView("ports")}
+          onClick={() => {
+            sound.click();
+            setView("ports");
+          }}
         >
-          Ports
+          {t("ports")}
         </button>
         <button
           type="button"
           role="tab"
           aria-selected={view === "history"}
           className={`tab ${view === "history" ? "tab--active" : ""}`}
-          onClick={() => setView("history")}
+          onClick={() => {
+            sound.click();
+            setView("history");
+          }}
         >
-          Historique
+          {t("history")}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === "dashboard"}
+          className={`tab ${view === "dashboard" ? "tab--active" : ""}`}
+          onClick={() => {
+            sound.click();
+            setView("dashboard");
+          }}
+        >
+          {t("dashboard")}
         </button>
       </nav>
 
-      {view === "ports" ? (
+      {view === "ports" && (
         <>
           <Toolbar
             search={search}
@@ -402,21 +436,21 @@ export default function App() {
           {selectedRows.length > 0 && (
             <div className="bulk-bar" role="region" aria-label="Actions sur la selection">
               <span className="bulk-bar__count">
-                {selectedRows.length} selectionne(s)
+                {selectedRows.length} {t("selected")}
               </span>
               <button
                 type="button"
                 className="btn btn--danger btn--sm"
                 onClick={handleKillBatch}
               >
-                Kill la selection
+                {t("bulk_kill")}
               </button>
               <button
                 type="button"
                 className="btn btn--ghost btn--sm"
                 onClick={() => setRowSelection({})}
               >
-                Annuler
+                {t("cancel")}
               </button>
             </div>
           )}
@@ -434,17 +468,25 @@ export default function App() {
             />
           </main>
         </>
-      ) : (
+      )}
+
+      {view === "history" && (
         <main className="app__main">
           <HistoryView onNotify={setToast} />
+        </main>
+      )}
+
+      {view === "dashboard" && (
+        <main className="app__main">
+          <DashboardView />
         </main>
       )}
 
       <footer className="app__footer">
         v0.7.0 &middot;
         {lastUpdated
-          ? ` dernier scan ${lastUpdated.toLocaleTimeString()}`
-          : " en attente du premier scan…"}
+          ? ` ${t("last_scan")} ${lastUpdated.toLocaleTimeString()}`
+          : ` ${t("waiting_scan")}`}
         {refreshMs > 0 && ` · auto ${refreshMs / 1000}s`}
       </footer>
 

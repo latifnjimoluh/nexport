@@ -237,7 +237,9 @@ export async function exportEvents(
 const DEFAULT_SETTINGS: Settings = {
   refreshMs: 2000,
   notificationsEnabled: true,
+  soundEnabled: true,
   theme: "dark",
+  language: "fr",
   autoKillPorts: [],
   autoKillEnabled: true,
   readOnly: false,

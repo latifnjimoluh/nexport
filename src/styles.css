@@ -87,8 +87,9 @@ body {
 
 .app__main {
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding: 0 18px 18px;
   overscroll-behavior: contain;
 }
@@ -364,28 +365,39 @@ body {
 
 /* Table */
 .table-wrap {
+  flex: 1;
   margin-top: 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  overflow-x: auto;
-  overflow-y: visible;
-  overscroll-behavior-x: contain;
+  overflow: auto;
+  background: var(--bg-soft);
 }
 
 .ports {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 13px;
   table-layout: fixed;
 }
 
 .ports thead {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.ports th {
   background: var(--bg-soft);
   position: sticky;
   top: 0;
+  z-index: 20;
+  padding: 4px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
 }
 
-.ports th,
 .ports td {
   padding: 4px 8px;
   text-align: left;

@@ -4,6 +4,7 @@ import {
   sendNotification,
 } from "@tauri-apps/plugin-notification";
 import { isTauri } from "./api";
+import { sound } from "./sound";
 
 let permissionPromise: Promise<boolean> | null = null;
 
@@ -23,6 +24,7 @@ async function ensurePermission(): Promise<boolean> {
 }
 
 export async function notify(title: string, body: string): Promise<void> {
+  sound.notify();
   if (!isTauri) {
     console.log(`[mock notify] ${title} — ${body}`);
     return;

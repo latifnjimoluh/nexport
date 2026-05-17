@@ -9,7 +9,11 @@ use std::sync::Mutex;
 pub struct Settings {
     pub refresh_ms: u32,
     pub notifications_enabled: bool,
+    #[serde(default = "default_true")]
+    pub sound_enabled: bool,
     pub theme: Theme,
+    #[serde(default = "default_fr")]
+    pub language: String,
     #[serde(default)]
     pub auto_kill_ports: Vec<u16>,
     #[serde(default = "default_true")]
@@ -21,6 +25,7 @@ pub struct Settings {
 }
 
 fn default_true() -> bool { true }
+fn default_fr() -> String { "fr".to_string() }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -34,7 +39,9 @@ impl Default for Settings {
         Self {
             refresh_ms: 2000,
             notifications_enabled: true,
+            sound_enabled: true,
             theme: Theme::Dark,
+            language: "fr".to_string(),
             auto_kill_ports: Vec::new(),
             auto_kill_enabled: true,
             read_only: false,
