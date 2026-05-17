@@ -23,6 +23,7 @@ interface Props {
   rows: PortRow[];
   onKill: (row: PortRow) => void;
   onNotify?: (msg: string) => void;
+  onShowDetails?: (pid: number) => void;
   rowSelection: RowSelectionState;
   onRowSelectionChange: OnChangeFn<RowSelectionState>;
 }
@@ -33,6 +34,7 @@ export function PortTable({
   rows,
   onKill,
   onNotify,
+  onShowDetails,
   rowSelection,
   onRowSelectionChange,
 }: Props) {
@@ -299,6 +301,17 @@ export function PortTable({
                   🌐 Web
                 </button>
               )}
+              {onShowDetails && (
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--sm"
+                  disabled={row.pid === null}
+                  onClick={() => row.pid !== null && onShowDetails(row.pid)}
+                  title="Voir les details du process"
+                >
+                  ℹ
+                </button>
+              )}
               <button
                 type="button"
                 className="btn btn--danger btn--sm"
@@ -312,7 +325,7 @@ export function PortTable({
         },
       }),
     ],
-    [onKill, favSet, toggleFavorite],
+    [onKill, favSet, toggleFavorite, onShowDetails],
   );
 
   const table = useReactTable({

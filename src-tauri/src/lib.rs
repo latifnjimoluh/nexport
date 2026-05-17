@@ -92,6 +92,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::list_ports,
             commands::kill_process,
+            commands::get_process_details,
             commands::is_elevated,
             commands::relaunch_as_admin,
             commands::list_favorites,

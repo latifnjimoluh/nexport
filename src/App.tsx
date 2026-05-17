@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { RowSelectionState } from "@tanstack/react-table";
 import { HistoryView } from "./components/HistoryView";
+import { ProcessDetailsPanel } from "./components/ProcessDetailsPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { Toolbar } from "./components/Toolbar";
 import { PortTable } from "./components/PortTable";
@@ -62,6 +63,7 @@ export default function App() {
   const [view, setView] = useState<"ports" | "history">("ports");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [detailsPid, setDetailsPid] = useState<number | null>(null);
 
   useEffect(() => {
     if (!toast) return;
@@ -364,6 +366,7 @@ export default function App() {
               rows={filtered}
               onKill={handleKill}
               onNotify={setToast}
+              onShowDetails={(pid) => setDetailsPid(pid)}
               rowSelection={rowSelection}
               onRowSelectionChange={setRowSelection}
             />
@@ -386,6 +389,20 @@ export default function App() {
       {toast && <div className="toast">{toast}</div>}
 
       {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+
+      {detailsPid !== null && (
+        <ProcessDetailsPanel
+          pid={detailsPid}
+          onClose={() => setDetailsPid(null)}
+          onKill={() => {
+            const row = rows.find((r) => r.pid === detailsPid);
+            if (row) {
+              setDetailsPid(null);
+              handleKill(row);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

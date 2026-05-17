@@ -1,6 +1,6 @@
 use crate::db::{Db, EventFilter, EventRow};
 use crate::elevation;
-use crate::models::PortRow;
+use crate::models::{PortRow, ProcessDetails};
 use crate::settings::{self, Settings, SettingsState};
 use crate::{db, ports, PortTimestamps};
 use std::fs::File;
@@ -54,6 +54,11 @@ fn unix_now() -> i64 {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs() as i64)
         .unwrap_or(0)
+}
+
+#[tauri::command]
+pub fn get_process_details(pid: u32) -> Result<ProcessDetails, String> {
+    ports::details(pid)
 }
 
 #[tauri::command]

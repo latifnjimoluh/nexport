@@ -30,6 +30,21 @@ export interface AutoKillError {
   reason: string;
 }
 
+export interface ProcessDetails {
+  pid: number;
+  name: string;
+  exe: string | null;
+  cwd: string | null;
+  cmd: string[];
+  parentPid: number | null;
+  parentName: string | null;
+  memoryBytes: number;
+  virtualMemoryBytes: number;
+  cpuUsage: number;
+  startTime: number;
+  runTime: number;
+}
+
 export type EventKind = "opened" | "closed" | "killed";
 
 export interface EventRow {

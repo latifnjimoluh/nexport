@@ -7,6 +7,7 @@ import type {
   EventRow,
   PortEvent,
   PortRow,
+  ProcessDetails,
   Settings,
 } from "../types";
 
@@ -118,6 +119,26 @@ export async function listPorts(): Promise<PortRow[]> {
   }
   await new Promise((r) => setTimeout(r, 120));
   return structuredClone(MOCK_ROWS);
+}
+
+export async function getProcessDetails(pid: number): Promise<ProcessDetails> {
+  if (!isTauri) {
+    return {
+      pid,
+      name: "mock.exe",
+      exe: "C:\\fake\\path\\mock.exe",
+      cwd: "C:\\fake\\cwd",
+      cmd: ["mock.exe", "--port", "3000"],
+      parentPid: 1,
+      parentName: "explorer.exe",
+      memoryBytes: 128 * 1024 * 1024,
+      virtualMemoryBytes: 256 * 1024 * 1024,
+      cpuUsage: 1.5,
+      startTime: Math.floor(Date.now() / 1000) - 3600,
+      runTime: 3600,
+    };
+  }
+  return await invoke<ProcessDetails>("get_process_details", { pid });
 }
 
 export async function killProcess(pid: number): Promise<void> {

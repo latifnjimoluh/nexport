@@ -1,4 +1,4 @@
-use crate::models::{ConnState, Family, PortRow, Protocol, RiskInfo, RiskLevel};
+use crate::models::{ConnState, Family, PortRow, ProcessDetails, Protocol, RiskInfo, RiskLevel};
 use netstat2::{
     get_sockets_info, AddressFamilyFlags, ProtocolFlags, ProtocolSocketInfo, TcpState,
 };
@@ -221,6 +221,50 @@ fn analyze_risk(port: u16, process_name: Option<&str>) -> RiskInfo {
         level: RiskLevel::Safe,
         reason: None,
     }
+}
+
+pub fn details(pid: u32) -> Result<ProcessDetails, String> {
+    let mut sys = System::new();
+    sys.refresh_all();
+    // 2e refresh espacé pour avoir un cpu_usage > 0 (sysinfo le calcule sur 2 mesures)
+    std::thread::sleep(std::time::Duration::from_millis(200));
+    sys.refresh_cpu_all();
+    sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+
+    let proc = sys
+        .process(Pid::from_u32(pid))
+        .ok_or_else(|| format!("process {pid} introuvable"))?;
+
+    let cmd: Vec<String> = proc
+        .cmd()
+        .iter()
+        .map(|s| s.to_string_lossy().into_owned())
+        .collect();
+
+    let (parent_pid, parent_name) = match proc.parent() {
+        Some(ppid) => {
+            let name = sys
+                .process(ppid)
+                .map(|p| p.name().to_string_lossy().into_owned());
+            (Some(ppid.as_u32()), name)
+        }
+        None => (None, None),
+    };
+
+    Ok(ProcessDetails {
+        pid,
+        name: proc.name().to_string_lossy().into_owned(),
+        exe: proc.exe().map(|p| p.to_string_lossy().into_owned()),
+        cwd: proc.cwd().map(|p| p.to_string_lossy().into_owned()),
+        cmd,
+        parent_pid,
+        parent_name,
+        memory_bytes: proc.memory(),
+        virtual_memory_bytes: proc.virtual_memory(),
+        cpu_usage: proc.cpu_usage(),
+        start_time: proc.start_time(),
+        run_time: proc.run_time(),
+    })
 }
 
 pub fn kill(pid: u32) -> Result<(), String> {

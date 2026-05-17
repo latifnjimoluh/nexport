@@ -56,6 +56,23 @@ pub struct RiskInfo {
     pub reason: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProcessDetails {
+    pub pid: u32,
+    pub name: String,
+    pub exe: Option<String>,
+    pub cwd: Option<String>,
+    pub cmd: Vec<String>,
+    pub parent_pid: Option<u32>,
+    pub parent_name: Option<String>,
+    pub memory_bytes: u64,
+    pub virtual_memory_bytes: u64,
+    pub cpu_usage: f32,
+    pub start_time: u64,
+    pub run_time: u64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PortRow {
