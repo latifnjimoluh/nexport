@@ -1,6 +1,7 @@
 mod commands;
 mod db;
 mod elevation;
+mod firewall;
 mod models;
 mod ports;
 mod settings;
@@ -104,6 +105,9 @@ pub fn run() {
             commands::export_events,
             commands::get_settings,
             commands::set_settings,
+            commands::firewall_block_port,
+            commands::firewall_unblock_port,
+            commands::firewall_list_blocks,
         ])
         .run(tauri::generate_context!())
         .expect("erreur au lancement de l'application Tauri");

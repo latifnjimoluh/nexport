@@ -5,6 +5,7 @@ import type {
   AutoKillError,
   EventFilter,
   EventRow,
+  FirewallBlock,
   PortEvent,
   PortRow,
   ProcessDetails,
@@ -249,6 +250,33 @@ export async function getSettings(): Promise<Settings> {
 export async function setSettings(s: Settings): Promise<Settings> {
   if (!isTauri) return s;
   return await invoke<Settings>("set_settings", { settings: s });
+}
+
+export async function firewallListBlocks(): Promise<FirewallBlock[]> {
+  if (!isTauri) return [];
+  return await invoke<FirewallBlock[]>("firewall_list_blocks");
+}
+
+export async function firewallBlockPort(
+  port: number,
+  protocol: string,
+): Promise<void> {
+  if (!isTauri) {
+    console.log(`[mock] block ${protocol}:${port}`);
+    return;
+  }
+  await invoke<void>("firewall_block_port", { port, protocol });
+}
+
+export async function firewallUnblockPort(
+  port: number,
+  protocol: string,
+): Promise<void> {
+  if (!isTauri) {
+    console.log(`[mock] unblock ${protocol}:${port}`);
+    return;
+  }
+  await invoke<void>("firewall_unblock_port", { port, protocol });
 }
 
 export async function isElevated(): Promise<boolean> {

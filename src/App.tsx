@@ -7,6 +7,8 @@ import { SettingsPanel } from "./components/SettingsPanel";
 import { Toolbar } from "./components/Toolbar";
 import { PortTable } from "./components/PortTable";
 import {
+  firewallBlockPort,
+  firewallListBlocks,
   isElevated,
   isTauri,
   killProcess,
@@ -139,6 +141,46 @@ export default function App() {
     staleTime: Infinity,
   });
   const elevated = elevatedQuery.data ?? false;
+
+  const firewallQuery = useQuery({
+    queryKey: ["firewall_blocks"],
+    queryFn: firewallListBlocks,
+    staleTime: 30_000,
+  });
+  const blockedSet = useMemo(
+    () =>
+      new Set(
+        (firewallQuery.data ?? []).map((b) => `${b.protocol}:${b.port}`),
+      ),
+    [firewallQuery.data],
+  );
+
+  async function handleBlockPort(port: number, protocol: string) {
+    const ok = await confirmAction(
+      `Bloquer le port ${protocol} ${port} via le pare-feu Windows ?\n\n` +
+        `Equivalent CLI :\nnetsh advfirewall firewall add rule ` +
+        `name="NexPort_block_${protocol}_${port}" dir=in action=block ` +
+        `protocol=${protocol} localport=${port}\n\n` +
+        `Necessite des droits administrateur.`,
+      {
+        title: "Bloquer un port",
+        destructive: true,
+        okLabel: "Bloquer",
+        cancelLabel: "Annuler",
+      },
+    );
+    if (!ok) return;
+    try {
+      await firewallBlockPort(port, protocol);
+      setToast(`🛡 ${protocol} ${port} bloque`);
+      queryClient.invalidateQueries({ queryKey: ["firewall_blocks"] });
+    } catch (e) {
+      void showError(
+        "Echec du blocage",
+        e instanceof Error ? e.message : String(e),
+      );
+    }
+  }
 
   const elevateMutation = useMutation({
     mutationFn: relaunchAsAdmin,
@@ -367,6 +409,8 @@ export default function App() {
               onKill={handleKill}
               onNotify={setToast}
               onShowDetails={(pid) => setDetailsPid(pid)}
+              onBlockPort={handleBlockPort}
+              blockedSet={blockedSet}
               rowSelection={rowSelection}
               onRowSelectionChange={setRowSelection}
             />

@@ -30,6 +30,12 @@ export interface AutoKillError {
   reason: string;
 }
 
+export interface FirewallBlock {
+  port: number;
+  protocol: string;
+  blockedAt: number;
+}
+
 export interface ProcessDetails {
   pid: number;
   name: string;

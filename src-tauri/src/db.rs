@@ -50,7 +50,13 @@ pub fn open(app_data_dir: &Path) -> rusqlite::Result<Connection> {
              process   TEXT
          );
          CREATE INDEX IF NOT EXISTS events_ts ON events (ts);
-         CREATE INDEX IF NOT EXISTS events_port ON events (port);",
+         CREATE INDEX IF NOT EXISTS events_port ON events (port);
+         CREATE TABLE IF NOT EXISTS firewall_blocks (
+             port      INTEGER NOT NULL,
+             protocol  TEXT    NOT NULL,
+             blocked_at INTEGER NOT NULL,
+             PRIMARY KEY (port, protocol)
+         );",
     )?;
     Ok(conn)
 }
@@ -160,4 +166,52 @@ pub fn count_events(conn: &Connection) -> rusqlite::Result<i64> {
 
 pub fn clear_events(conn: &Connection) -> rusqlite::Result<usize> {
     conn.execute("DELETE FROM events", [])
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FirewallBlock {
+    pub port: u16,
+    pub protocol: String,
+    pub blocked_at: i64,
+}
+
+pub fn list_firewall_blocks(conn: &Connection) -> rusqlite::Result<Vec<FirewallBlock>> {
+    let mut stmt =
+        conn.prepare("SELECT port, protocol, blocked_at FROM firewall_blocks ORDER BY port")?;
+    let rows = stmt
+        .query_map([], |r| {
+            Ok(FirewallBlock {
+                port: r.get::<_, i64>(0)? as u16,
+                protocol: r.get(1)?,
+                blocked_at: r.get(2)?,
+            })
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    Ok(rows)
+}
+
+pub fn add_firewall_block(
+    conn: &Connection,
+    port: u16,
+    protocol: &str,
+) -> rusqlite::Result<()> {
+    conn.execute(
+        "INSERT OR REPLACE INTO firewall_blocks (port, protocol, blocked_at)
+         VALUES (?1, ?2, strftime('%s','now'))",
+        params![port as i64, protocol],
+    )?;
+    Ok(())
+}
+
+pub fn remove_firewall_block(
+    conn: &Connection,
+    port: u16,
+    protocol: &str,
+) -> rusqlite::Result<()> {
+    conn.execute(
+        "DELETE FROM firewall_blocks WHERE port = ?1 AND protocol = ?2",
+        params![port as i64, protocol],
+    )?;
+    Ok(())
 }

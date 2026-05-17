@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSettings } from "../store/settings";
 import { REFRESH_OPTIONS } from "../store/filters";
-import { isTauri } from "../lib/api";
+import {
+  firewallListBlocks,
+  firewallUnblockPort,
+  isTauri,
+} from "../lib/api";
 import { confirmAction, showError } from "../lib/dialog";
 import type { Theme } from "../types";
 import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
@@ -241,6 +246,8 @@ export function SettingsPanel({ onClose }: Props) {
             </p>
           </section>
 
+          <FirewallSection />
+
           <section className="setting">
             <span className="setting__label">Mises à jour</span>
             <p className="setting__hint">
@@ -279,5 +286,59 @@ export function SettingsPanel({ onClose }: Props) {
         </footer>
       </div>
     </div>
+  );
+}
+
+function FirewallSection() {
+  const queryClient = useQueryClient();
+  const blocksQuery = useQuery({
+    queryKey: ["firewall_blocks"],
+    queryFn: firewallListBlocks,
+    staleTime: 10_000,
+  });
+  const unblock = useMutation({
+    mutationFn: (params: { port: number; protocol: string }) =>
+      firewallUnblockPort(params.port, params.protocol),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["firewall_blocks"] }),
+    onError: (e: Error) =>
+      void showError("Echec deblocage", e.message || "Erreur inconnue."),
+  });
+
+  const blocks = blocksQuery.data ?? [];
+
+  return (
+    <section className="setting">
+      <span className="setting__label">🛡 Pare-feu Windows</span>
+      <p className="setting__hint">
+        Ports bloques en entree via <code>netsh advfirewall</code>. Necessite
+        des droits administrateur pour ajouter ou supprimer une regle.
+      </p>
+      {blocks.length === 0 ? (
+        <p className="muted" style={{ fontSize: 12 }}>
+          Aucun port bloque pour le moment. Utilise le bouton 🛡 dans le
+          tableau des ports.
+        </p>
+      ) : (
+        <div className="setting__chips">
+          {blocks.map((b) => (
+            <span key={`${b.protocol}:${b.port}`} className="chip chip--active">
+              {b.protocol} {b.port}
+              <button
+                type="button"
+                className="chip__remove"
+                disabled={unblock.isPending}
+                onClick={() =>
+                  unblock.mutate({ port: b.port, protocol: b.protocol })
+                }
+                title="Debloquer"
+              >
+                ✕
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }

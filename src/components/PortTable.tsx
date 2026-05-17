@@ -25,6 +25,8 @@ interface Props {
   onKill: (row: PortRow) => void;
   onNotify?: (msg: string) => void;
   onShowDetails?: (pid: number) => void;
+  onBlockPort?: (port: number, protocol: string) => void;
+  blockedSet?: Set<string>;
   rowSelection: RowSelectionState;
   onRowSelectionChange: OnChangeFn<RowSelectionState>;
 }
@@ -36,6 +38,8 @@ export function PortTable({
   onKill,
   onNotify,
   onShowDetails,
+  onBlockPort,
+  blockedSet,
   rowSelection,
   onRowSelectionChange,
 }: Props) {
@@ -314,6 +318,24 @@ export function PortTable({
                   ℹ
                 </button>
               )}
+              {onBlockPort && (() => {
+                const isBlocked = blockedSet?.has(`${row.protocol}:${row.port}`);
+                return (
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--sm"
+                    onClick={() => onBlockPort(row.port, row.protocol)}
+                    title={
+                      isBlocked
+                        ? "Deja bloque (debloquer via Settings)"
+                        : "Bloquer ce port via pare-feu Windows (admin requis)"
+                    }
+                    disabled={isBlocked}
+                  >
+                    {isBlocked ? "🛡✓" : "🛡"}
+                  </button>
+                );
+              })()}
               <button
                 type="button"
                 className="btn btn--danger btn--sm"
@@ -327,7 +349,7 @@ export function PortTable({
         },
       }),
     ],
-    [onKill, favSet, toggleFavorite, onShowDetails],
+    [onKill, favSet, toggleFavorite, onShowDetails, onBlockPort, blockedSet],
   );
 
   const table = useReactTable({

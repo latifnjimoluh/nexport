@@ -1,5 +1,6 @@
-use crate::db::{Db, EventFilter, EventRow};
+use crate::db::{Db, EventFilter, EventRow, FirewallBlock};
 use crate::elevation;
+use crate::firewall;
 use crate::models::{PortRow, ProcessDetails};
 use crate::settings::{self, Settings, SettingsState};
 use crate::{db, ports, PortTimestamps};
@@ -187,4 +188,34 @@ pub fn set_settings(
     *current = settings;
     settings::save(&state.path, &current).map_err(|e| format!("save settings: {e}"))?;
     Ok(current.clone())
+}
+
+#[tauri::command]
+pub fn firewall_block_port(
+    state: State<'_, Db>,
+    port: u16,
+    protocol: String,
+) -> Result<(), String> {
+    firewall::block(port, &protocol)?;
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::add_firewall_block(&conn, port, &protocol).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn firewall_unblock_port(
+    state: State<'_, Db>,
+    port: u16,
+    protocol: String,
+) -> Result<(), String> {
+    firewall::unblock(port, &protocol)?;
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::remove_firewall_block(&conn, port, &protocol).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn firewall_list_blocks(state: State<'_, Db>) -> Result<Vec<FirewallBlock>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::list_firewall_blocks(&conn).map_err(|e| e.to_string())
 }
